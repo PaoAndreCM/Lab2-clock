@@ -67,13 +67,6 @@ function bezel(clockRadius){
   return extrudeRing
 }
 
-// scene.add(extrudeRing);
-// extrudeRing.matrixAutoUpdate = false;
-// extrudeRing.updateMatrix;
-// printMat(extrudeRing.matrix)
-
-// Mouse control
-
 function clockFace(clockRadius){
   const face = new THREE.Object3D();
   scene.add(face);
@@ -135,9 +128,14 @@ function clockFace(clockRadius){
   const secondHand = new THREE.Mesh(secondHandGeo, secondHandMaterial);
   secondHand.name = "secondHand";
 
-  secondHand.position.set(0, secondHandLength/2, clockDepth/2)
-
   face.add(secondHand);
+
+  const axesHelper1 = new THREE.AxesHelper();
+  secondHand.add( axesHelper1 );
+
+  secondHand.matrixAutoUpdate = false;
+  // secondHand.position.set(0, secondHandLength/2, clockDepth/2)
+  // secondHand.updateMatrix();
 
   
   // Minute Hand
@@ -171,8 +169,6 @@ function clockFace(clockRadius){
 
 // Hamburg clock
 const hamburgFace = clockFace(clockRadius);
-hamburgFace.getObjectByName("secondHand").matrixAutoUpdate = false;
-// hamburgFace.getObjectByName("minuteHand").matrixAutoUpdate = false;
 
 // Bogota clock
 const bogotaFace = clockFace(clockRadius);
@@ -182,11 +178,20 @@ const ax = new THREE.Vector3(0,1,0);
 bogotaFace.matrixAutoUpdate = false;
 bogotaFace.matrix.makeRotationAxis(ax,theta);
 
-const om1 = 1;
 
 
-const om = -Math.PI/30;
-const rad = 1;
+// // make rotation matrix z-axis by 6 degrees
+const om = -Math.PI/30; // 6 degrees in radians
+const pivot = new THREE.Vector3(0, -(clockRadius-0.1/2)/2, clockDepth/2 );
+// const pivot = new THREE.Vector3(0, 0, 0 );
+// const m = new THREE.Matrix4();
+// m.makeRotationZ ( om );
+// console.log("Rotation by 6 degrees in x-axis");
+// printMat(m);
+
+
+
+
 const cl = new THREE.Clock();
 const controls = new TrackballControls(camera, renderer.domElement);
 // Render the scene
@@ -195,7 +200,30 @@ function render() {
   
   const t =  cl.getElapsedTime();
 
-  const minuteHandPos = new THREE.Vector3(rad*Math.sin(om*t), rad*Math.cos(om*t), 0);
+  const T = new THREE.Matrix4().setPosition(new THREE.Vector3(0, (clockRadius-0.1)/2, clockDepth/2));
+  const R = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), om*t);
+  const rp = pivot.clone().applyMatrix4(R);
+  const prp = pivot.clone().sub(rp);
+  R.setPosition(prp);
+
+  // secondHand.matrix.copy(R);
+
+  hamburgFace.getObjectByName("secondHand").matrix.copy(R.premultiply(T));
+  // hamburgFace.getObjectByName("secondHand").matrix.multiplyMatrices(hamburgFace.getObjectByName("secondHand").matrix, R);
+
+  // printMat(hamburgFace.getObjectByName("secondHand").matrix);
+  // console.log("-------")
+
+
+
+  // hamburgFace.getObjectByName("minuteHand").rotation.z = om * t;
+
+
+
+
+
+
+  // const minuteHandPos = new THREE.Vector3(rad*Math.sin(om*t), rad*Math.cos(om*t), 0);
 
   // const spherePos = new THREE.Vector3(rad*Math.cos(om1*t),
   //                                     0,
@@ -203,7 +231,7 @@ function render() {
 
   // sphere.matrix.setPosition(spherePos);
 
-  hamburgFace.getObjectByName("minuteHand").matrix.setPosition(minuteHandPos);
+  
 
   light.position.copy(camera.position.clone())
   controls.update();
