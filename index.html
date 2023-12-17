@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+        <title>Assignment 2: A 3D clock</title>
+    </head>
+    <body>
+        <canvas id="myCanvas"
+                style="border: 1px solid;"
+                width="700"
+                height="500">
+        </canvas>
+
+        <script type="importmap">
+         {"imports": {
+           "three": "./lib/three.module.min.js",
+           "three/addons/": "./lib/addons/"
+         }}
+        </script>
+
+        <script type="module" src="Clock3D.js"> </script>
+    </body>
+</html>
