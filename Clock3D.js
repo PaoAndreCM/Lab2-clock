@@ -27,9 +27,14 @@ scene.add(light);
 
 // Add the clock here:
 
-// Clock cylinder 
+ 
 const clockRadius = 5;
 const clockDepth = 1;
+const secondHandLength = clockRadius-0.1;
+const minuteHandLegth = clockRadius/2
+const hourHandLegth = clockRadius/4;
+
+// Clock cylinder
 const clockGeometry = new THREE.CylinderGeometry( clockRadius, clockRadius, clockDepth, 100 ); 
 const clockMaterial = new THREE.MeshStandardMaterial({color:0x9b8292,
                                                       metalness:0.1,
@@ -122,47 +127,36 @@ function clockFace(clockRadius){
   face.add( blob );
 
   // Second Hand
-  const secondHandLength = clockRadius-0.1;
+  
   const secondHandGeo = new THREE.BoxGeometry(0.1,secondHandLength, 0.05);
   const secondHandMaterial = new THREE.MeshBasicMaterial({color:'black'});
   const secondHand = new THREE.Mesh(secondHandGeo, secondHandMaterial);
   secondHand.name = "secondHand";
 
   face.add(secondHand);
-
-  const axesHelper1 = new THREE.AxesHelper();
-  secondHand.add( axesHelper1 );
-
   secondHand.matrixAutoUpdate = false;
-  // secondHand.position.set(0, secondHandLength/2, clockDepth/2)
-  // secondHand.updateMatrix();
 
   
   // Minute Hand
-  const minuteHandLegth = clockRadius/2
   const minuteHandGeo = new THREE.SphereGeometry(minuteHandLegth, 32, 16);
   const minuteHandMaterial = new THREE.MeshStandardMaterial({color: 'red', metalness: 1, roughness: 0.2})
-  minuteHandMaterial.transparent = true;
+  minuteHandMaterial.transparent = false;
   minuteHandMaterial.opacity = 0.1;
   const minuteHand = new THREE.Mesh(minuteHandGeo, minuteHandMaterial);
   minuteHand.name = "minuteHand";
 
-  minuteHand.scale.set(0.05, 1, 0.025);
-  minuteHand.position.set(Math.sin(Math.PI/30)+0.1, minuteHandLegth, clockDepth/2);
-  minuteHand.rotation.z = -Math.PI/30;
-
   face.add(minuteHand);
+  minuteHand.matrixAutoUpdate = false;
   
   // Hour Hand
-  const hourHandLegth = clockRadius/4;
+  
   const hourHandGeo = new THREE.SphereGeometry(hourHandLegth, 32, 16);
   const hourHandMaterial = new THREE.MeshStandardMaterial({color: 'blue', metalness: 1, roughness: 0.2})
   const hourHand = new THREE.Mesh(hourHandGeo, hourHandMaterial);
-
-  hourHand.scale.set(0.1, 1, 0.05);
-  hourHand.position.set(0, hourHandLegth, clockDepth/2+0.05*clockRadius/2)
+  hourHand.name = "hourHand"
 
   face.add(hourHand);
+  hourHand.matrixAutoUpdate = false;
 
   return face;
 }
@@ -171,23 +165,22 @@ function clockFace(clockRadius){
 const hamburgFace = clockFace(clockRadius);
 
 // Bogota clock
-const bogotaFace = clockFace(clockRadius);
-// Rotate Bogota Face
-const theta = Math.PI;
-const ax = new THREE.Vector3(0,1,0);
-bogotaFace.matrixAutoUpdate = false;
-bogotaFace.matrix.makeRotationAxis(ax,theta);
+// const bogotaFace = clockFace(clockRadius);
+// // Rotate Bogota Face
+// const theta = Math.PI;
+// const ax = new THREE.Vector3(0,1,0);
+// bogotaFace.matrixAutoUpdate = false;
+// bogotaFace.matrix.makeRotationAxis(ax,theta);
 
 
 
-// // make rotation matrix z-axis by 6 degrees
-const om = -Math.PI/30; // 6 degrees in radians
+
+const omSeconds = -Math.PI/30; // 6 degrees per second
 const pivot = new THREE.Vector3(0, -(clockRadius-0.1/2)/2, clockDepth/2 );
-// const pivot = new THREE.Vector3(0, 0, 0 );
-// const m = new THREE.Matrix4();
-// m.makeRotationZ ( om );
-// console.log("Rotation by 6 degrees in x-axis");
-// printMat(m);
+
+const omMinutes = -Math.PI/30/60; // 6 degrees per minute
+
+const omHours = -Math.PI/30/60/60;
 
 
 
@@ -199,39 +192,37 @@ function render() {
   requestAnimationFrame(render);
   
   const t =  cl.getElapsedTime();
-
-  const T = new THREE.Matrix4().setPosition(new THREE.Vector3(0, (clockRadius-0.1)/2, clockDepth/2));
-  const R = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), om*t);
-  const rp = pivot.clone().applyMatrix4(R);
-  const prp = pivot.clone().sub(rp);
-  R.setPosition(prp);
-
-  // secondHand.matrix.copy(R);
-
-  hamburgFace.getObjectByName("secondHand").matrix.copy(R.premultiply(T));
-  // hamburgFace.getObjectByName("secondHand").matrix.multiplyMatrices(hamburgFace.getObjectByName("secondHand").matrix, R);
-
-  // printMat(hamburgFace.getObjectByName("secondHand").matrix);
-  // console.log("-------")
-
-
-
-  // hamburgFace.getObjectByName("minuteHand").rotation.z = om * t;
-
-
-
-
-
-
-  // const minuteHandPos = new THREE.Vector3(rad*Math.sin(om*t), rad*Math.cos(om*t), 0);
-
-  // const spherePos = new THREE.Vector3(rad*Math.cos(om1*t),
-  //                                     0,
-  //                                     rad*Math.sin(om1*t));
-
-  // sphere.matrix.setPosition(spherePos);
-
   
+  // Hamburg second hand movement
+ 
+  const T = new THREE.Matrix4().setPosition(new THREE.Vector3(0, (clockRadius-0.1)/2, clockDepth/2)); // initial position desired for second and minute hand
+  const Rseconds = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), omSeconds*t); // Rotation matrix for second hand
+  const rp = pivot.clone().applyMatrix4(Rseconds); // Applying rotation matrix to position of second hand
+  const prp = pivot.clone().sub(rp); // difference vector (prp) between the original pivot position and the newly rotated position
+  Rseconds.setPosition(prp); // sets the translation part of the rotation matrix (Rseconds) to this difference vector 
+
+  hamburgFace.getObjectByName("secondHand").matrix.copy(Rseconds.premultiply(T));
+
+
+  // Hamburg minute hand movement
+  const scaleMinuteHand = new THREE.Matrix4().makeScale(0.05, 1, 0.025) // make scale matrix for minute hand
+  const Tr = new THREE.Matrix4().setPosition(new THREE.Vector3(Math.sin(Math.PI/30)+0.1, (clockRadius-0.1)/2, clockDepth/2));
+  const Rminutes = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), omMinutes*t); // Rotation matrix for minute hand
+  const rp1 = pivot.clone().applyMatrix4(Rminutes); // Applying rotation matrix to position of minute hand
+  const prp1 = pivot.clone().sub(rp1); // difference vector (prp1) between the original pivot position and the newly rotated position
+  Rminutes.setPosition(prp1);
+
+  hamburgFace.getObjectByName("minuteHand").matrix.copy(scaleMinuteHand.premultiply(Rminutes).premultiply(T));
+
+  // Hamburg hour hand movement
+  const T1 = new THREE.Matrix4().setPosition(new THREE.Vector3(0, hourHandLegth, clockDepth/2+0.05*clockRadius/2))
+  const scaleHourHand = new THREE.Matrix4().makeScale(0.1, 1, 0.05) // make scale matrix for hour hand
+  const Rhours = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), omHours*t); // Rotation matrix for minute hand
+  const rp2 = pivot.clone().applyMatrix4(Rhours); // Applying rotation matrix to position of hour hand
+  const prp2 = pivot.clone().sub(rp2); // difference vector (prp2) between the original pivot position and the newly rotated position
+  Rhours.setPosition(prp2);
+
+  hamburgFace.getObjectByName("hourHand").matrix.copy(scaleHourHand.premultiply(Rhours).premultiply(T1));
 
   light.position.copy(camera.position.clone())
   controls.update();
