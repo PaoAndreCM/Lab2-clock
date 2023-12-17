@@ -165,22 +165,25 @@ function clockFace(clockRadius){
 const hamburgFace = clockFace(clockRadius);
 
 // Bogota clock
-// const bogotaFace = clockFace(clockRadius);
-// // Rotate Bogota Face
-// const theta = Math.PI;
-// const ax = new THREE.Vector3(0,1,0);
-// bogotaFace.matrixAutoUpdate = false;
-// bogotaFace.matrix.makeRotationAxis(ax,theta);
+const bogotaFace = clockFace(clockRadius);
+// Rotate Bogota Face
+const theta = Math.PI;
+const ax = new THREE.Vector3(0,1,0);
+bogotaFace.matrixAutoUpdate = false;
+bogotaFace.matrix.makeRotationAxis(ax,theta);
 
 
 
-
-const omSeconds = -Math.PI/30; // 6 degrees per second
+const segmentAngle = -Math.PI/30;
+const hourSegmentAbsoluteAngle = -Math.PI/6;
+const hourSegmentAnalogousAngle = -Math.PI/360;
 const pivot = new THREE.Vector3(0, -(clockRadius-0.1/2)/2, clockDepth/2 );
+const pivotHourHand = new THREE.Vector3(0, -(hourHandLegth), clockDepth/2 );
 
-const omMinutes = -Math.PI/30/60; // 6 degrees per minute
+// set initial position of second and minute hands
+const TranslationMinSecHands = new THREE.Matrix4().setPosition(new THREE.Vector3(0, (clockRadius-0.1)/2, clockDepth/2)); // position at 0:00:00 
+const TranslationHourHands = new THREE.Matrix4().setPosition(new THREE.Vector3(0, hourHandLegth, clockDepth/2+0.02*clockRadius/2))
 
-const omHours = -Math.PI/30/60/60;
 
 
 
@@ -190,39 +193,79 @@ const controls = new TrackballControls(camera, renderer.domElement);
 // Render the scene
 function render() {
   requestAnimationFrame(render);
-  
-  const t =  cl.getElapsedTime();
-  
+
+  const currentDate = new Date();
+  const seconds = currentDate.getSeconds();
+  const minutes = currentDate.getMinutes();
+  const hours = currentDate.getHours();
+  const timeDifference = 6; // Hamburg is 6 hours ahead of Bogotá
+  const hoursBogota = hours - timeDifference;
+
+  const angleSeconds = segmentAngle*seconds;
+  const angleMinutes = segmentAngle*minutes;
+  const angleHour = hourSegmentAbsoluteAngle*hours + hourSegmentAnalogousAngle*minutes; // added part to simulate hour hand movement in an analogous clock
+  const angleHourBogota = hourSegmentAbsoluteAngle*hoursBogota + hourSegmentAnalogousAngle*minutes;
+   
   // Hamburg second hand movement
- 
-  const T = new THREE.Matrix4().setPosition(new THREE.Vector3(0, (clockRadius-0.1)/2, clockDepth/2)); // initial position desired for second and minute hand
-  const Rseconds = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), omSeconds*t); // Rotation matrix for second hand
+
+  const Rseconds = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), angleSeconds); // Rotation matrix for second hand
   const rp = pivot.clone().applyMatrix4(Rseconds); // Applying rotation matrix to position of second hand
   const prp = pivot.clone().sub(rp); // difference vector (prp) between the original pivot position and the newly rotated position
   Rseconds.setPosition(prp); // sets the translation part of the rotation matrix (Rseconds) to this difference vector 
 
-  hamburgFace.getObjectByName("secondHand").matrix.copy(Rseconds.premultiply(T));
+  hamburgFace.getObjectByName("secondHand").matrix.copy(Rseconds.premultiply(TranslationMinSecHands));
 
 
   // Hamburg minute hand movement
+
   const scaleMinuteHand = new THREE.Matrix4().makeScale(0.05, 1, 0.025) // make scale matrix for minute hand
-  const Tr = new THREE.Matrix4().setPosition(new THREE.Vector3(Math.sin(Math.PI/30)+0.1, (clockRadius-0.1)/2, clockDepth/2));
-  const Rminutes = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), omMinutes*t); // Rotation matrix for minute hand
+  const Rminutes = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), angleMinutes); // Rotation matrix for minute hand
   const rp1 = pivot.clone().applyMatrix4(Rminutes); // Applying rotation matrix to position of minute hand
   const prp1 = pivot.clone().sub(rp1); // difference vector (prp1) between the original pivot position and the newly rotated position
   Rminutes.setPosition(prp1);
 
-  hamburgFace.getObjectByName("minuteHand").matrix.copy(scaleMinuteHand.premultiply(Rminutes).premultiply(T));
+  hamburgFace.getObjectByName("minuteHand").matrix.copy(scaleMinuteHand.premultiply(Rminutes).premultiply(TranslationMinSecHands));
+
 
   // Hamburg hour hand movement
-  const T1 = new THREE.Matrix4().setPosition(new THREE.Vector3(0, hourHandLegth, clockDepth/2+0.05*clockRadius/2))
+
   const scaleHourHand = new THREE.Matrix4().makeScale(0.1, 1, 0.05) // make scale matrix for hour hand
-  const Rhours = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), omHours*t); // Rotation matrix for minute hand
-  const rp2 = pivot.clone().applyMatrix4(Rhours); // Applying rotation matrix to position of hour hand
-  const prp2 = pivot.clone().sub(rp2); // difference vector (prp2) between the original pivot position and the newly rotated position
+  const Rhours = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), angleHour); // Rotation matrix for minute hand
+  const rp2 = pivotHourHand.clone().applyMatrix4(Rhours); // Applying rotation matrix to position of hour hand
+  const prp2 = pivotHourHand.clone().sub(rp2); // difference vector (prp2) between the original pivot position and the newly rotated position
   Rhours.setPosition(prp2);
 
-  hamburgFace.getObjectByName("hourHand").matrix.copy(scaleHourHand.premultiply(Rhours).premultiply(T1));
+  hamburgFace.getObjectByName("hourHand").matrix.copy(scaleHourHand.premultiply(Rhours).premultiply(TranslationHourHands));
+
+
+  // Bogota second hand movement
+
+  const RsecondsBog = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), angleSeconds); // Rotation matrix for second hand
+  const rpSecsBog = pivot.clone().applyMatrix4(RsecondsBog); // Applying rotation matrix to position of second hand
+  const prpSecsBog = pivot.clone().sub(rpSecsBog); // difference vector (prp) between the original pivot position and the newly rotated position
+  RsecondsBog.setPosition(prpSecsBog); // sets the translation part of the rotation matrix (Rseconds) to this difference vector 
+
+  bogotaFace.getObjectByName("secondHand").matrix.copy(RsecondsBog.premultiply(TranslationMinSecHands));
+
+
+  // Bogota minute hand movement
+
+  const scaleMinuteHandBog = new THREE.Matrix4().makeScale(0.05, 1, 0.025) // make scale matrix for minute hand
+
+  bogotaFace.getObjectByName("minuteHand").matrix.copy(scaleMinuteHandBog.premultiply(Rminutes).premultiply(TranslationMinSecHands));
+
+
+  // Bogota hour hand movement
+
+  // const TranslationHourHandBog = new THREE.Matrix4().setPosition(new THREE.Vector3(0, hourHandLegth, clockDepth/2+0.02*clockRadius/2))
+  const scaleHourHandBog = new THREE.Matrix4().makeScale(0.1, 1, 0.05) // make scale matrix for hour hand
+  const RhoursBog = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(0,0,1), angleHourBogota); // Rotation matrix for minute hand
+  const rpHoursBog = pivotHourHand.clone().applyMatrix4(RhoursBog); // Applying rotation matrix to position of hour hand
+  const prpHoursBog = pivotHourHand.clone().sub(rpHoursBog); // difference vector (prp2) between the original pivot position and the newly rotated position
+  RhoursBog.setPosition(prpHoursBog);
+
+  bogotaFace.getObjectByName("hourHand").matrix.copy(scaleHourHandBog.premultiply(RhoursBog).premultiply(TranslationHourHands));
+
 
   light.position.copy(camera.position.clone())
   controls.update();
